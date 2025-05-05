@@ -2,7 +2,7 @@
 import { version as VERSION } from '../package.json';
 import { MODES } from './constants/Modes';
 import { JSON_EXTENSION, VALID_FILE_EXTENSIONS } from './constants/FileExtensions';
-import { GetLiterals, InterLangOptions, LangExtension } from './types';
+import { GetLiterals, InterLangOptions, LangExtension, LiteralsResult } from './types';
 import LanguageFile from './utils/LanguageFile';
 import { get, set } from './utils/Object';
 
@@ -114,7 +114,7 @@ class InterLang {
     return baseLiterals ?? {};
   }
 
-  public createGetLiterals(getLiterals: GetLiterals): Object {
+  public createGetLiterals(getLiterals: GetLiterals): LiteralsResult {
     const {
       mode = MODES.PROD,
       baseLiteralsPath = 'utils',
@@ -148,7 +148,7 @@ class InterLang {
     return new Proxy(literals, {
       get: (target, prop) => getLiteral(target, String(prop)),
       apply: (target, thisArg, [key, defaultValue]) => getLiteral(target, String(key)) ?? defaultValue,
-    });
+    }) as LiteralsResult;
   }
 
 }
