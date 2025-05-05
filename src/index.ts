@@ -4,7 +4,7 @@ import { MODES } from './constants/Modes';
 import { JSON_EXTENSION, VALID_FILE_EXTENSIONS } from './constants/FileExtensions';
 import { GetLiterals, InterLangOptions, LangExtension } from './types';
 import LanguageFile from './utils/LanguageFile';
-import { get } from './utils/Object';
+import { get, set } from './utils/Object';
 
 /**
  * InterLang - Biblioteca TypeScript sin dependencias usando clases ES6
@@ -15,17 +15,17 @@ import { get } from './utils/Object';
  * Clase principal de InterLang
  */
 class InterLang {
-  public version: string;
-  public options: InterLangOptions;
-  public file: LanguageFile | null;
+  private options: InterLangOptions;
+  private file: LanguageFile | null;
+  private unsetFile: LanguageFile | null;
 
   /**
    * Constructor de la clase principal
    * @param options - Opciones de configuración
    */
   constructor(options: InterLangOptions = {}) {
-    this.version = VERSION;
     this.file = null;
+    this.unsetFile = null;
 
     this.options = {
       mode: MODES.PROD,
@@ -66,7 +66,19 @@ class InterLang {
     if (mode === MODES.DEBUG) console.log('Lenguaje inicializado:', newLang);
 
     this.options.language = newLang;
-    this.file = new LanguageFile(newLang, this.options);
+    this.file = new LanguageFile(newLang, {
+      ...this.options,
+      dictionaryPath: `${this.options.dictionaryPath}/${newLang}`,
+    });
+
+    if ([MODES.DEV, MODES.DEBUG].includes(mode)) {
+      this.unsetFile = new LanguageFile(`unset_${newLang}`, {
+        ...this.options,
+        dictionaryPath: `${this.options.dictionaryPath}/${newLang}`,
+      });
+
+      if (mode === MODES.DEBUG) console.log('Archivo de idioma no seteado creado:', this.unsetFile.filePath);
+    }
 
     return this;
   }
@@ -115,13 +127,27 @@ class InterLang {
 
     const getLiteral = (obj: Object, key: string) => {
       const literal = get(obj, key);
-      if (mode === MODES.DEBUG && !literal) console.warn(`Literal no encontrado: ${key}`);
+      if (!literal) {
+        if (mode === MODES.DEBUG) console.warn(`Literal no encontrado: ${key}`);
+
+        if (
+          this.unsetFile
+          && [MODES.DEV, MODES.DEBUG].includes(mode)
+        ) {
+          const unsetFileContent = this.unsetFile.getFileContent();
+          set(unsetFileContent, key, key);
+          this.unsetFile.setFileContent(unsetFileContent);
+
+          if (mode === MODES.DEBUG) console.log('Literal se ha creado en el archivo de idioma no seteado:', this.unsetFile.filePath);
+        }
+      }
+
       return literal;
     }
 
     return new Proxy(literals, {
       get: (target, prop) => getLiteral(target, String(prop)),
-      apply: (target, thisArg, argumentsList) => getLiteral(target, String(argumentsList[0])),
+      apply: (target, thisArg, [key, defaultValue]) => getLiteral(target, String(key)) ?? defaultValue,
     });
   }
 

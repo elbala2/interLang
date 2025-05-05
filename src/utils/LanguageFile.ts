@@ -34,13 +34,13 @@ export default class LanguageFile {
     return dirPath;
   }
 
-  private checkFile(lang: string): string {
+  private checkFile(name: string): string {
     const {
       langExtension = JSON_EXTENSION,
       mode = MODES.PROD,
     } = this.options;
 
-    const filePath = path.join(this.dirPath, `/${lang}/index${langExtension}`);
+    const filePath = path.join(this.dirPath, `/${name}${langExtension}`);
     if (
       !fs.existsSync(filePath)
       && [MODES.DEBUG, MODES.DEV].includes(mode)
@@ -53,12 +53,12 @@ export default class LanguageFile {
   }
 
   constructor(
-    lang: string,
+    name: string,
     options: InterLangOptions,
   ) {
     this.options = options;
     this.dirPath = this.checkMainDir();
-    this.filePath = this.checkFile(lang);
+    this.filePath = this.checkFile(name);
   }
 
   public getFileContent(): any {
@@ -81,5 +81,27 @@ export default class LanguageFile {
     }
 
     return fileContent;
+  }
+
+  public setFileContent(content: any): void {
+    const {
+      mode = MODES.PROD,
+      langExtension = JSON_EXTENSION,
+    } = this.options;
+
+    let newContent = content;
+
+    if (langExtension === JSON_EXTENSION) {
+      try {
+        newContent = JSON.stringify(content, null, 2);
+      } catch (error) {
+        console.error(`Error al actualizar el archivo: ${this.filePath}`);
+        return;
+      }
+    }
+
+    fs.writeFileSync(this.filePath, newContent);
+
+    if (mode === MODES.DEBUG) console.log(`Archivo actualizado: ${this.filePath}`);
   }
 } 
