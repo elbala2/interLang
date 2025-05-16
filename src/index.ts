@@ -127,6 +127,7 @@ class InterLang {
 
     const getLiteral = (obj: Object, key: string) => {
       const literal = get(obj, key);
+
       if (!literal) {
         if (mode === MODES.DEBUG) console.warn(`Literal no encontrado: ${key}`);
 
@@ -145,9 +146,17 @@ class InterLang {
       return literal;
     }
 
-    return new Proxy(literals, {
-      get: (target, prop) => getLiteral(target, String(prop)),
-      apply: (target, thisArg, [key, defaultValue]) => getLiteral(target, String(key)) ?? defaultValue,
+    return new Proxy(Object.assign(function() {}, literals), {
+      get: (target, prop) => {
+        if (prop === 'isInterLang') return true;
+        if (prop === Symbol.toStringTag) return 'InterLang';
+
+        return getLiteral(literals, String(prop));
+      },
+
+      apply: (target, thisArg, [key, defaultValue]) => {
+        return getLiteral(literals, String(key)) ?? defaultValue;
+      },
     }) as LiteralsResult;
   }
 

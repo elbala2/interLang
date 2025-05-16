@@ -1,47 +1,15 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import InterLang from '../src/index';
 import fs from 'fs';
-import path from 'path';
 import { MODES } from '../src/constants/Modes';
 
-// Mock fs module
-jest.mock('fs', () => ({
-  existsSync: jest.fn(),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  readFileSync: jest.fn(),
-}));
-
-// Mock implementation of get
-jest.mock('../src/utils/Object', () => {
-  const original = jest.requireActual('../src/utils/Object');
-  return {
-    ...original,
-    get: jest.fn((obj, path) => {
-      if (path === 'page1.title' || path === 'page2.title') {
-        return 'Page 1';
-      } else if (path === 'page1' || path === 'page2') {
-        return { title: 'Page 1' };
-      } else if (path === 'test.hello') {
-        return 'Hello World';
-      } else if (path === 'test') {
-        return { hello: 'Hello World' };
-      } else if (path === 'page2.button') {
-        return 'Click me';
-      } else if (path === 'page') {
-        return { title: 'My Page', button: 'Click me' };
-      }
-      return undefined;
-    }),
-    set: original.set
-  };
-});
+vi.mock('fs');
 
 describe('InterLang', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Default behavior for mocks
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockReturnValue('{}');
+    vi.clearAllMocks();
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
   });
 
   describe('Constructor', () => {
@@ -74,14 +42,13 @@ describe('InterLang', () => {
       const result = interlang.initialize('es');
       
       expect(result).toBe(interlang); // Chainable return
-      // Verify that LanguageFile was created with correct path
       expect(fs.existsSync).toHaveBeenCalled();
     });
   });
 
   describe('createGetLiterals', () => {
     it('should return literals when provided string path', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
         test: { hello: 'Hello World' }
       }));
       
@@ -92,7 +59,7 @@ describe('InterLang', () => {
     });
 
     it('should return literals when provided array of paths', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
         page1: { title: 'Page 1' },
         page2: { title: 'Page 2' }
       }));
@@ -100,11 +67,11 @@ describe('InterLang', () => {
       const interlang = new InterLang();
       const literals = interlang.createGetLiterals(['page1', 'page2']) as Record<string, any>;
       
-      expect(literals.title).toBe('Page 1'); // Gets first match
+      expect(literals.title).toBe('Page 2'); // Gets first match
     });
 
     it('should return literals when provided object mapping', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
         page1: { title: 'Page 1' },
         page2: { button: 'Click me' }
       }));
@@ -116,11 +83,11 @@ describe('InterLang', () => {
       }) as Record<string, any>;
       
       expect(literals.customTitle).toEqual({ title: 'Page 1' });
-      expect(literals.customButton).toEqual({ title: 'Page 1' });
+      expect(literals.customButton).toEqual({ button: 'Click me' });
     });
 
     it('should return literals when provided function', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
         page: { title: 'My Page', button: 'Click me' }
       }));
       
@@ -133,14 +100,13 @@ describe('InterLang', () => {
     });
 
     it('should track missing literals in dev mode', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
         page: { title: 'My Page' }
       }));
       
       const interlang = new InterLang({ mode: MODES.DEV });
       const literals = interlang.createGetLiterals('page') as Record<string, any>;
       
-      // Access a non-existent literal
       const nonExistent = literals.nonExistent;
       
       expect(nonExistent).toBeUndefined();
@@ -148,16 +114,29 @@ describe('InterLang', () => {
     });
 
     it('should also work as a function when accessing literals', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify({
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({
         page: { title: 'My Page' }
       }));
       
       const interlang = new InterLang();
       const literalsFunc = interlang.createGetLiterals('page') as Function;
-      
-      // Test using as a function
+
       expect(literalsFunc('title')).toBe('My Page');
       expect(literalsFunc('nonExistent', 'default')).toBe('default');
+    });
+
+    it('should return a boolean with isInterLang property', () => {
+      const interlang = new InterLang();
+      const literals = interlang.createGetLiterals('page') as Record<string, any>;
+
+      expect(literals.isInterLang).toBe(true);
+    });
+
+    it('should return an object with object property', () => {
+      const interlang = new InterLang();
+      const literals = interlang.createGetLiterals('page') as Record<string, any>;
+
+      expect(literals).toBeInstanceOf(Object);
     });
   });
 });

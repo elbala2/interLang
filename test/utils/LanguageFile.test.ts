@@ -1,29 +1,47 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Definir los tipos de los mocks primero
+type MockedFunction = ReturnType<typeof vi.fn>;
+
+vi.mock('fs', () => {
+  return {
+    existsSync: vi.fn(),
+    mkdirSync: vi.fn(),
+    writeFileSync: vi.fn(),
+    readFileSync: vi.fn(),
+    default: {
+      existsSync: vi.fn(),
+      mkdirSync: vi.fn(),
+      writeFileSync: vi.fn(),
+      readFileSync: vi.fn(),
+    }
+  };
+});
+
+vi.mock('path', () => {
+  return {
+    resolve: vi.fn(),
+    join: vi.fn(),
+    default: {
+      resolve: vi.fn(),
+      join: vi.fn(),
+    }
+  };
+});
+
 import LanguageFile from '../../src/utils/LanguageFile';
 import fs from 'fs';
 import path from 'path';
 import { MODES } from '../../src/constants/Modes';
 
-// Mock fs and path modules
-jest.mock('fs', () => ({
-  existsSync: jest.fn(),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  readFileSync: jest.fn(),
-}));
-
-jest.mock('path', () => ({
-  resolve: jest.fn(),
-  join: jest.fn(),
-}));
-
 describe('LanguageFile', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Default behavior for mocks
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockReturnValue('{}');
-    (path.resolve as jest.Mock).mockImplementation((...args) => args.join('/'));
-    (path.join as jest.Mock).mockImplementation((...args) => args.join('/'));
+    (fs.existsSync as MockedFunction).mockReturnValue(true);
+    (fs.readFileSync as MockedFunction).mockReturnValue('{}');
+    (path.resolve as MockedFunction).mockImplementation((...args) => args.join('/'));
+    (path.join as MockedFunction).mockImplementation((...args) => args.join('/'));
   });
 
   describe('constructor', () => {
@@ -38,7 +56,7 @@ describe('LanguageFile', () => {
     });
 
     it('should create directory if it does not exist in dev mode', () => {
-      (fs.existsSync as jest.Mock).mockReturnValueOnce(false);
+      (fs.existsSync as MockedFunction).mockReturnValueOnce(false);
       
       const languageFile = new LanguageFile('en', {
         mode: MODES.DEV,
@@ -49,20 +67,20 @@ describe('LanguageFile', () => {
     });
 
     it('should create file if it does not exist in dev mode', () => {
-      (fs.existsSync as jest.Mock)
+      (fs.existsSync as MockedFunction)
         .mockReturnValueOnce(true)  // Directory exists
         .mockReturnValueOnce(false); // File does not exist
-      
+
       const languageFile = new LanguageFile('en', {
         mode: MODES.DEV,
         dictionaryPath: './i18n/en'
       });
-      
+
       expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
     it('should not create directory if it does not exist in prod mode', () => {
-      (fs.existsSync as jest.Mock).mockReturnValueOnce(false);
+      (fs.existsSync as MockedFunction).mockReturnValueOnce(false);
       
       const languageFile = new LanguageFile('en', {
         mode: MODES.PROD,
@@ -75,7 +93,7 @@ describe('LanguageFile', () => {
 
   describe('getFileContent', () => {
     it('should read and parse JSON file content', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue('{"key": "value"}');
+      (fs.readFileSync as MockedFunction).mockReturnValue('{"key": "value"}');
       
       const languageFile = new LanguageFile('en', {
         dictionaryPath: './i18n/en'
@@ -87,7 +105,7 @@ describe('LanguageFile', () => {
     });
 
     it('should return empty object if JSON is invalid', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue('invalid json');
+      (fs.readFileSync as MockedFunction).mockReturnValue('invalid json');
       
       const languageFile = new LanguageFile('en', {
         dictionaryPath: './i18n/en'
@@ -98,7 +116,7 @@ describe('LanguageFile', () => {
     });
 
     it('should return raw content for non-JSON extension', () => {
-      (fs.readFileSync as jest.Mock).mockReturnValue('const content = "test";');
+      (fs.readFileSync as MockedFunction).mockReturnValue('const content = "test";');
       
       const languageFile = new LanguageFile('en', {
         dictionaryPath: './i18n/en',

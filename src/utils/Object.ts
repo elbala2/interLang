@@ -1,4 +1,3 @@
-
 /**
  * Obtiene un valor de un objeto a partir de una ruta
  * @param {Object} obj - El objeto
@@ -6,15 +5,20 @@
  * @returns {any} El valor
  */
 export function get(obj: Object, path: string) {
-  return path.split('.')
-    .reduce((acc: any, key: any) => {
-      if (
-        typeof acc !== 'object'
-        || (Array.isArray(acc) && Number.isNaN(key))
-        || !(key in acc)
-      ) return undefined;
-      return acc[key];
-    }, obj);
+  let acc = obj;
+  for (const key of path.split('.')) {
+    if (!key) return acc;
+
+    if (
+      typeof acc !== 'object'
+      || (Array.isArray(acc) && Number.isNaN(key))
+      || !(key in acc)
+    ) return undefined;
+
+    acc = (acc as Record<string, any>)[key];
+  }
+
+  return acc;
 }
 
 /**
@@ -24,15 +28,23 @@ export function get(obj: Object, path: string) {
  * @param {any} value - El valor
  * @returns {Object} El objeto
  */
-export function set(obj: Object, path: string, value: any) {
+export function set(obj: Object, path: string, value: any): Record<string, any> {
   const keys = path.split('.');
-  const lastKey = keys.pop();  
-  const parent = get(obj, keys.join('.'));
+  let current = obj as Record<string, any>;
 
-  if (!parent || !lastKey) return obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!key) continue;
 
-  parent[lastKey] = value;
-  return obj;
+    if (!current[key] || typeof current[key] !== 'object') current[key] = {};
+
+    current = current[key];
+  }
+
+  const lastKey = keys[keys.length - 1];
+  if (lastKey) current[lastKey] = value;
+
+  return obj as Record<string, any>;
 }
 
 /**
@@ -41,17 +53,16 @@ export function set(obj: Object, path: string, value: any) {
  * @param {string} path - La ruta
  * @returns {Object} El objeto
  */
-export function del(obj: Object, path: string) {
+export function del(obj: Object, path: string): Record<string, any> {
   const keys = path.split('.');
   const lastKey = keys.pop();
   const parent = get(obj, keys.join('.'));
-
-  if (!parent || !lastKey) return obj;
-  delete parent[lastKey];
-  return obj;
+  if (!parent || !lastKey) return obj as Record<string, any>;
+  delete (parent as Record<string, any>)[lastKey];
+  return obj as Record<string, any>;
 }
 
-/**
+/**</edit>
  * Verifica si un objeto es igual a otro
  * @param {any} obj1 - El objeto
  * @param {any} obj2 - El objeto

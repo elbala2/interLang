@@ -1,50 +1,5 @@
+import { describe, it, expect } from 'vitest';
 import { get, set, del, isEquals } from '../../src/utils/Object';
-
-// Mock the functions to properly test implementation
-jest.mock('../../src/utils/Object', () => {
-  const original = jest.requireActual('../../src/utils/Object');
-  
-  return {
-    ...original,
-    get: jest.fn(original.get),
-    set: jest.fn((obj, path, value) => {
-      const keys = path.split('.');
-      const lastKey = keys.pop();
-      let current = obj;
-      
-      for (const key of keys) {
-        if (!current[key] || typeof current[key] !== 'object') {
-          current[key] = {};
-        }
-        current = current[key];
-      }
-      
-      if (lastKey) {
-        current[lastKey] = value;
-      }
-      
-      return obj;
-    }),
-    del: jest.fn((obj, path) => {
-      const keys = path.split('.');
-      const lastKey = keys.pop();
-      let current = obj;
-      
-      for (const key of keys) {
-        if (!current[key] || typeof current[key] !== 'object') {
-          return obj;
-        }
-        current = current[key];
-      }
-      
-      if (lastKey && current) {
-        delete current[lastKey];
-      }
-      
-      return obj;
-    })
-  };
-});
 
 describe('Object Utils', () => {
   describe('get function', () => {
@@ -90,8 +45,9 @@ describe('Object Utils', () => {
   describe('set function', () => {
     it('should set a value in a simple object path', () => {
       const obj: Record<string, any> = { name: 'John' };
-      set(obj, 'age', 30);
-      expect(obj.age).toBe(30);
+      const result = set(obj, 'age', 30);
+      console.log(result);
+      expect(result.age).toBe(30);
     });
 
     it('should set a value in a nested object path', () => {
@@ -106,8 +62,8 @@ describe('Object Utils', () => {
     });
 
     it('should set object if parent path does not exist', () => {
-      const obj = { name: 'John' };
-      set(obj, 'address.city', 'New York');
+      let obj = { name: 'John' } as Record<string, any>;
+      obj = set(obj, 'address.city', 'New York');
       expect(obj).toEqual({ name: 'John', address: { city: 'New York' } });
     });
 

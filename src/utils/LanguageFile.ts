@@ -95,7 +95,7 @@ export default class LanguageFile {
       try {
         newContent = JSON.stringify(content, null, 2);
       } catch (error) {
-        console.error(`Error al actualizar el archivo: ${this.filePath}`);
+        if ([MODES.DEBUG, MODES.DEV].includes(mode)) console.error(`Error al actualizar el archivo: ${this.filePath}`);
         return;
       }
     }
