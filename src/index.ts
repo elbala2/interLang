@@ -4,7 +4,9 @@ import { MODES } from './constants/Modes';
 import { JSON_EXTENSION, VALID_FILE_EXTENSIONS } from './constants/FileExtensions';
 import { GetLiterals, InterLangOptions, LangExtension, LiteralsResult } from './types';
 import LanguageFile from './utils/LanguageFile';
-import { get, set } from './utils/Object';
+import { Object as AtomObject } from '@elbala2/atomutils';
+
+const { get, set } = AtomObject;
 
 /**
  * InterLang - Biblioteca TypeScript sin dependencias usando clases ES6

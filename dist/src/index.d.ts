@@ -1,4 +1,4 @@
-import { GetLiterals, InterLangOptions } from './types';
+import { GetLiterals, InterLangOptions, LiteralsResult } from './types';
 /**
  * InterLang - Biblioteca TypeScript sin dependencias usando clases ES6
  * @version VERSION desde package.json
@@ -22,7 +22,7 @@ declare class InterLang {
      */
     initialize(lang: string): InterLang;
     private getLiterals;
-    createGetLiterals(getLiterals: GetLiterals): Object;
+    createGetLiterals(getLiterals: GetLiterals): LiteralsResult;
 }
 export default InterLang;
 export { InterLang, InterLangOptions };

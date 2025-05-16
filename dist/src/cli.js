@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const package_json_1 = require("../package.json");
+const fs_1 = __importDefault(require("fs"));
 const args = process.argv.slice(2);
 function printHelp() {
     console.log(`
@@ -15,6 +19,8 @@ Usage:
 Commands:
   help     Display this help message
   version  Display version information
+  generate [sourcePath] [baseLanguage] [newLanguage] [extension]  Generate a new language file
+  translate [content] [targetLang]  Translate a language file
 
 For more information, visit: https://github.com/youruser/interlang
 `);
@@ -22,14 +28,106 @@ For more information, visit: https://github.com/youruser/interlang
 function printVersion() {
     console.log(`InterLang v${package_json_1.version}`);
 }
-function main() {
+/**
+ * Traduce texto usando la API gratuita de LibreTranslate
+ * @param text Texto a traducir
+ * @param targetLang Código del idioma de destino
+ * @returns Texto traducido
+ */
+async function translateText(text, targetLang) {
+    const GOOGLE_TRANSLATE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!GOOGLE_TRANSLATE_API_KEY) {
+        throw new Error('GOOGLE_TRANSLATE_API_KEY environment variable is required. Please set it before running the command.');
+    }
+    const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_TRANSLATE_API_KEY}`, {
+        method: "POST",
+        body: JSON.stringify({
+            q: text,
+            target: targetLang,
+            format: "text"
+        }),
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    const data = await res.json();
+    if (data.error) {
+        throw new Error(`Google Translate API error: ${data.error.message}`);
+    }
+    return data.data.translations[0].translatedText;
+}
+/**
+ * Traduce un objeto o texto
+ */
+async function translate(content, targetLang) {
+    // Si es un string, traducir directamente
+    if (typeof content === 'string') {
+        return await translateText(content, targetLang);
+    }
+    const calls = Object.values(content).map((value) => translate(value, targetLang));
+    const results = await Promise.all(calls);
+    return Object.fromEntries(Object.entries(content)
+        .map(([key, value], index) => [key, results[index]]));
+}
+async function generateLanguage(sourcePath, baseLanguage, newLanguage, extension = '.json') {
+    console.log('Generating...');
+    if (!sourcePath || !baseLanguage || !newLanguage) {
+        console.error('Error: You must provide a source file and a language code.');
+        console.log('Usage: interlang -g <sourcePath> <baseLanguage> <newLanguage>');
+        process.exit(1);
+    }
+    try {
+        // Check if source file exists
+        const sourceFilePath = `${sourcePath}/${baseLanguage}/index${extension}`;
+        if (!fs_1.default.existsSync(sourceFilePath)) {
+            console.error(`Error: Source file not found: ${sourceFilePath}`);
+            process.exit(1);
+        }
+        // Read the source file
+        let content = fs_1.default.readFileSync(sourceFilePath, 'utf8');
+        // Parse JSON file
+        if (extension === '.json') {
+            content = JSON.parse(content);
+        }
+        // Create target directory if it doesn't exist
+        const targetDir = `${sourcePath}/${newLanguage}`;
+        if (!fs_1.default.existsSync(targetDir)) {
+            fs_1.default.mkdirSync(targetDir, { recursive: true });
+        }
+        console.log('Starting translation...');
+        const translatedData = await translate(content, newLanguage);
+        // Write translated content to the new file
+        const targetFilePath = `${sourcePath}/${newLanguage}/index${extension}`;
+        fs_1.default.writeFileSync(targetFilePath, JSON.stringify(translatedData, null, 2));
+        console.log(`Translation completed: ${targetFilePath}`);
+    }
+    catch (error) {
+        console.error('Error generating language file:', error);
+        process.exit(1);
+    }
+}
+async function main() {
     if (args.length === 0 || args[0] === 'help') {
         printHelp();
         return;
     }
     switch (args[0]) {
-        case 'version':
+        case '--version':
+        case '-v':
             printVersion();
+            break;
+        case '--help':
+        case '-h':
+            printHelp();
+            break;
+        case '--generate':
+        case '-g':
+            generateLanguage(args[1], args[2], args[3], args[4]);
+            break;
+        case '--translate':
+        case '-t':
+            const translatedText = await translate(args[1], args[2]);
+            console.log(translatedText);
             break;
         default:
             console.error(`Unknown command: ${args[0]}`);
@@ -37,4 +135,8 @@ function main() {
             process.exit(1);
     }
 }
-main();
+// Call main and handle any errors
+main().catch(error => {
+    console.error('An error occurred:', error);
+    process.exit(1);
+});

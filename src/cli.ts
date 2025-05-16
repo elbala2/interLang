@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { version } from '../package.json';
-import https from 'https';
 import fs from 'fs';
 
 const args = process.argv.slice(2);
@@ -18,6 +17,8 @@ Usage:
 Commands:
   help     Display this help message
   version  Display version information
+  generate [sourcePath] [baseLanguage] [newLanguage] [extension]  Generate a new language file
+  translate [content] [targetLang]  Translate a language file
 
 For more information, visit: https://github.com/youruser/interlang
 `);
@@ -34,21 +35,31 @@ function printVersion() {
  * @returns Texto traducido
  */
 async function translateText(text: string, targetLang: string): Promise<string> {
-  const res = await fetch("https://es.libretranslate.com/translate", {
+  const GOOGLE_TRANSLATE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY;
+  
+  if (!GOOGLE_TRANSLATE_API_KEY) {
+    throw new Error('GOOGLE_TRANSLATE_API_KEY environment variable is required. Please set it before running the command.');
+  }
+
+  const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_TRANSLATE_API_KEY}`, {
     method: "POST",
     body: JSON.stringify({
       q: text,
-      source: "auto",
       target: targetLang,
-      format: "text",
-      alternatives: 3,
-      api_key: ""
+      format: "text"
     }),
-    headers: { "Content-Type": "application/json" }
+    headers: { 
+      "Content-Type": "application/json"
+    }
   });
 
   const data = await res.json();
-  return data.translatedText;
+  
+  if (data.error) {
+    throw new Error(`Google Translate API error: ${data.error.message}`);
+  }
+
+  return data.data.translations[0].translatedText;
 }
 
 /**
@@ -118,11 +129,12 @@ async function generateLanguage(
   }
 }
 
-function main() {
+async function main() {
   if (args.length === 0 || args[0] === 'help') {
     printHelp();
     return;
   }
+
 
   switch (args[0]) {
     case '--version':
@@ -140,6 +152,12 @@ function main() {
       generateLanguage(args[1], args[2], args[3], args[4]);
       break;
 
+    case '--translate':
+    case '-t':
+      const translatedText = await translate(args[1], args[2]);
+      console.log(translatedText);
+      break;
+
     default:
       console.error(`Unknown command: ${args[0]}`);
       printHelp();
@@ -147,4 +165,8 @@ function main() {
   }
 }
 
-main(); 
+// Call main and handle any errors
+main().catch(error => {
+  console.error('An error occurred:', error);
+  process.exit(1);
+}); 

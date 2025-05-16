@@ -7,7 +7,8 @@ exports.InterLang = void 0;
 const Modes_1 = require("./constants/Modes");
 const FileExtensions_1 = require("./constants/FileExtensions");
 const LanguageFile_1 = __importDefault(require("./utils/LanguageFile"));
-const Object_1 = require("./utils/Object");
+const atomutils_1 = require("@elbala2/atomutils");
+const { get, set } = atomutils_1.Object;
 /**
  * InterLang - Biblioteca TypeScript sin dependencias usando clases ES6
  * @version VERSION desde package.json
@@ -67,18 +68,18 @@ class InterLang {
     getLiterals(getLiterals) {
         const baseLiterals = this.file?.getFileContent();
         if (typeof getLiterals === 'string')
-            return (0, Object_1.get)(baseLiterals, getLiterals) ?? {};
+            return get(baseLiterals, getLiterals) ?? {};
         if (typeof getLiterals === 'object') {
             if (Array.isArray(getLiterals)) {
                 return getLiterals.reduce((acc, curr) => ({
                     ...acc,
-                    ...(0, Object_1.get)(baseLiterals, curr) ?? {},
+                    ...get(baseLiterals, curr) ?? {},
                 }), {});
             }
             else {
                 return Object.entries(getLiterals).reduce((acc, [key, value]) => ({
                     ...acc,
-                    [key]: (0, Object_1.get)(baseLiterals, value) ?? {},
+                    [key]: get(baseLiterals, value) ?? {},
                 }), {});
             }
         }
@@ -93,14 +94,14 @@ class InterLang {
             ...this.getLiterals(baseLiteralsPath),
         };
         const getLiteral = (obj, key) => {
-            const literal = (0, Object_1.get)(obj, key);
+            const literal = get(obj, key);
             if (!literal) {
                 if (mode === Modes_1.MODES.DEBUG)
                     console.warn(`Literal no encontrado: ${key}`);
                 if (this.unsetFile
                     && [Modes_1.MODES.DEV, Modes_1.MODES.DEBUG].includes(mode)) {
                     const unsetFileContent = this.unsetFile.getFileContent();
-                    (0, Object_1.set)(unsetFileContent, key, key);
+                    set(unsetFileContent, key, key);
                     this.unsetFile.setFileContent(unsetFileContent);
                     if (mode === Modes_1.MODES.DEBUG)
                         console.log('Literal se ha creado en el archivo de idioma no seteado:', this.unsetFile.filePath);
@@ -108,9 +109,17 @@ class InterLang {
             }
             return literal;
         };
-        return new Proxy(literals, {
-            get: (target, prop) => getLiteral(target, String(prop)),
-            apply: (target, thisArg, [key, defaultValue]) => getLiteral(target, String(key)) ?? defaultValue,
+        return new Proxy(Object.assign(function () { }, literals), {
+            get: (target, prop) => {
+                if (prop === 'isInterLang')
+                    return true;
+                if (prop === Symbol.toStringTag)
+                    return 'InterLang';
+                return getLiteral(literals, String(prop));
+            },
+            apply: (target, thisArg, [key, defaultValue]) => {
+                return getLiteral(literals, String(key)) ?? defaultValue;
+            },
         });
     }
 }

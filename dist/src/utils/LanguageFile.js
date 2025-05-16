@@ -66,7 +66,8 @@ class LanguageFile {
                 newContent = JSON.stringify(content, null, 2);
             }
             catch (error) {
-                console.error(`Error al actualizar el archivo: ${this.filePath}`);
+                if ([Modes_1.MODES.DEBUG, Modes_1.MODES.DEV].includes(mode))
+                    console.error(`Error al actualizar el archivo: ${this.filePath}`);
                 return;
             }
         }

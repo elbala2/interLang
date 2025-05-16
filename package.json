@@ -19,11 +19,14 @@
     "vanilla",
     "typescript"
   ],
-  "author": "Enrique Albaladejo Herrero",
+  "author": "elbala2",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.15.3",
     "typescript": "^5.3.3",
     "vitest": "^1.6.1"
+  },
+  "dependencies": {
+    "@elbala2/atomutils": "^1.0.1"
   }
 }
